@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="随身课程表">
+<meta name="theme-color" content="#eef1f5">
+<title>随身课程表</title>
+<style>
+  :root {
+    --bg: #eef1f5;
+    --panel: #ffffff;
+    --line: #dfe4ea;
+    --ink: #1c2330;
+    --muted: #697386;
+    --accent: #2563eb;
+    --accent-soft: #e8efff;
+    --gap: #dfe4ea;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: 0;
+  }
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 12px 10px calc(20px + env(safe-area-inset-bottom));
+  }
+
+  .topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .topbar h1 {
+    margin: 0;
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 6px;
+    padding: 6px 10px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .chip .arr { color: var(--muted); }
+  .ghost {
+    flex: none;
+    margin-top: 2px;
+    padding: 8px 11px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .ghost:active { opacity: .75; }
+
+  .weeknav {
+    display: grid;
+    grid-template-columns: 40px 1fr 40px;
+    align-items: center;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 8px;
+    margin-bottom: 10px;
+  }
+  .nav-btn {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    background: #f5f7fa;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    font-size: 22px;
+    color: var(--ink);
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+  }
+  .nav-btn:active { background: #e9edf3; }
+  .weekcenter { text-align: center; min-width: 0; }
+  .weekcenter .wk {
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .weekcenter .meta {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 1px;
+  }
+
+  .seg {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    background: #e3e7ed;
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 10px;
+  }
+  .seg button {
+    height: 34px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .seg button.active {
+    background: var(--panel);
+    color: var(--accent);
+    box-shadow: 0 1px 2px rgba(20, 30, 45, .08);
+  }
+
+  .schedule {
+    display: grid;
+    grid-template-columns: 46px repeat(7, minmax(0, 1fr));
+    grid-template-rows: 44px repeat(10, 58px);
+    gap: 3px;
+    background: var(--gap);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 3px;
+    overflow: hidden;
+  }
+  .cell {
+    background: var(--panel);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .cell.head {
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+  }
+  .cell.head .dname { font-size: 12px; font-weight: 600; color: var(--ink); }
+  .cell.head .dnum { font-size: 11px; color: var(--muted); }
+  .cell.head.today { background: var(--accent-soft); }
+  .cell.head.today .dname { color: var(--accent); }
+  .cell.head.today .dnum { color: var(--accent); }
+  .cell.corner {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0;
+  }
+  .period {
+    background: var(--panel);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+  }
+  .period .pno { font-size: 12px; font-weight: 700; color: var(--ink); }
+  .period .pt { font-size: 8px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .course {
+    position: relative;
+    border: none;
+    border-radius: 8px;
+    padding: 5px 4px 4px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    cursor: pointer;
+    overflow: hidden;
+    min-width: 0;
+    touch-action: manipulation;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.04);
+    border-left: 3px solid var(--line);
+  }
+  .course:active { filter: brightness(.96); }
+  .course .c-name {
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.25;
+    width: 100%;
+    word-break: break-all;
+    letter-spacing: 0;
+  }
+  .course .c-meta {
+    font-size: 8.5px;
+    line-height: 1.2;
+    opacity: .82;
+    width: 100%;
+    word-break: break-all;
+  }
+  .course .c-tag {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    font-size: 8px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    background: rgba(255,255,255,.65);
+    color: inherit;
+    opacity: .9;
+  }
+
+  .foot {
+    margin-top: 12px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .foot .row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .foot .row + .row { margin-top: 6px; }
+  .foot .count { font-weight: 700; color: var(--ink); }
+  .foot .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot.even-dot { background: #f59e0b; }
+  .dot.later-dot { background: #38bdf8; }
+
+  .mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 22, 32, .42);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s ease;
+    z-index: 30;
+  }
+  .mask.show { opacity: 1; pointer-events: auto; }
+  .sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--panel);
+    border-radius: 18px 18px 0 0;
+    padding: 14px 16px calc(18px + env(safe-area-inset-bottom));
+    transform: translateY(105%);
+    transition: transform .22s cubic-bezier(.2, .8, .2, 1);
+    z-index: 31;
+    max-height: 86vh;
+    overflow-y: auto;
+  }
+  .sheet.show { transform: translateY(0); }
+  .sheet-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .sheet-head h3 { margin: 0; font-size: 16px; font-weight: 700; }
+  .close-btn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: #f2f4f7;
+    border-radius: 50%;
+    font-size: 15px;
+    color: var(--muted);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .term-line {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .week-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+  }
+  .week-grid button {
+    height: 42px;
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .week-grid button.now { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .week-grid button.sel { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .sheet-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .sheet-actions button {
+    height: 44px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .btn-cancel { background: #f2f4f7; color: var(--ink); border: 1px solid var(--line); }
+  .btn-confirm { background: var(--accent); color: #fff; border: none; }
+
+  .detail-title {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 2px 0 4px;
+    word-break: break-all;
+  }
+  .detail-sub { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+  .kv { display: grid; grid-template-columns: 82px 1fr; gap: 8px; padding: 9px 0; border-top: 1px solid #eef0f4; font-size: 13px; }
+  .kv .k { color: var(--muted); }
+  .kv .v { color: var(--ink); word-break: break-all; }
+  .detail-close {
+    margin-top: 14px;
+    width: 100%;
+    height: 44px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <h1>随身课程表</h1>
+        <button class="chip" id="termChip" aria-haspopup="dialog">2026-2027-1 · 第5周 <span class="arr">▾</span></button>
+      </div>
+      <button class="ghost" id="todayBtn">回到本周</button>
+    </header>
+
+    <nav class="weeknav" aria-label="周次切换">
+      <button class="nav-btn" id="prevWeek" aria-label="上一周">‹</button>
+      <div class="weekcenter">
+        <span class="wk">第 <span id="weekNum">5</span> 周</span>
+        <div class="meta"><span id="weekRange">10.12 - 10.18</span></div>
+      </div>
+      <button class="nav-btn" id="nextWeek" aria-label="下一周">›</button>
+    </nav>
+
+    <div class="seg" id="paritySeg" role="tablist" aria-label="单双周切换">
+      <button data-mode="auto" class="active">自动</button>
+      <button data-mode="odd">单周</button>
+      <button data-mode="even">双周</button>
+    </div>
+
+    <div class="schedule" id="schedule" aria-label="课程表"></div>
+
+    <footer class="foot">
+      <div class="row">本周共 <span class="count" id="courseCount">0</span> 门课 · <span id="parityText">单周</span></div>
+      <div class="row"><span class="dot even-dot"></span> 双周课程：技术经济学（周二1-2）、管理统计学（周三3-4）</div>
+      <div class="row"><span class="dot later-dot"></span> 第9周起新增：ERP原理与应用、战略管理（周三7-8）、形势与政策</div>
+    </footer>
+  </div>
+
+  <div class="mask" id="weekMask"></div>
+  <div class="sheet" id="weekSheet" role="dialog" aria-modal="true" aria-label="选择周次">
+    <div class="sheet-head">
+      <h3>选择周次</h3>
+      <button class="close-btn" id="weekClose" aria-label="关闭">✕</button>
+    </div>
+    <div class="term-line">2026-2027 学年第一学期 · 课程周次 1-16</div>
+    <div class="week-grid" id="weekGrid"></div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" id="weekCancel">取消</button>
+      <button class="btn-confirm" id="weekConfirm">确认</button>
+    </div>
+  </div>
+
+  <div class="mask" id="detailMask"></div>
+  <div class="sheet" id="detailSheet" role="dialog" aria-modal="true" aria-label="课程详情">
+    <div class="sheet-head">
+      <h3>课程详情</h3>
+      <button class="close-btn" id="detailClose" aria-label="关闭">✕</button>
+    </div>
+    <div id="detailBody"></div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  var TERM = "2026-2027-1";
+  var WEEK1_MONDAY = new Date(2026, 8, 14);
+  var MS_DAY = 86400000;
+
+  var PERIODS = [
+    { no: 1, s: "08:00", e: "08:45" },
+    { no: 2, s: "08:55", e: "09:40" },
+    { no: 3, s: "10:00", e: "10:45" },
+    { no: 4, s: "10:55", e: "11:40" },
+    { no: 5, s: "14:00", e: "14:45" },
+    { no: 6, s: "14:55", e: "15:50" },
+    { no: 7, s: "16:00", e: "16:45" },
+    { no: 8, s: "16:55", e: "17:40" },
+    { no: 9, s: "18:10", e: "19:05" },
+    { no: 10, s: "19:30", e: "20:25" }
+  ];
+
+  var DAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+
+  var COURSES = [
+    { name: "服务管理", day: 1, start: 1, end: 2, w0: 1, w1: 16, parity: "all", room: "三教307", teacher: "吴琼", cls: "服务管理-0003", comp: "工商2404", num: 46, note: "" },
+    { name: "技术经济学", day: 2, start: 1, end: 2, w0: 2, w1: 16, parity: "even", room: "三教604", teacher: "程定平", cls: "技术经济学-0008", comp: "工商2404", num: 46, note: "" },
+    { name: "消费者行为学", day: 5, start: 1, end: 2, w0: 1, w1: 16, parity: "all", room: "三教703", teacher: "刘炯", cls: "消费者行为学-0005", comp: "工商2404", num: 46, note: "" },
+    { name: "数字化客户关系管理", day: 1, start: 3, end: 4, w0: 1, w1: 16, parity: "all", room: "三教501", teacher: "汤呈香", cls: "数字化客户关系管理-0005", comp: "工商2404", num: 46, note: "" },
+    { name: "管理统计学", day: 2, start: 3, end: 4, w0: 1, w1: 16, parity: "all", room: "三教304", teacher: "李觉", cls: "管理统计学-0005", comp: "工商2404", num: 46, note: "" },
+    { name: "管理统计学", day: 3, start: 3, end: 4, w0: 2, w1: 16, parity: "even", room: "三教301", teacher: "李觉", cls: "管理统计学-0005", comp: "工商2404", num: 46, note: "" },
+    { name: "战略管理", day: 4, start: 3, end: 4, w0: 1, w1: 16, parity: "all", room: "三教706", teacher: "吴英", cls: "战略管理-0004", comp: "工商2404", num: 46, note: "" },
+    { name: "技术经济学", day: 5, start: 3, end: 4, w0: 1, w1: 16, parity: "all", room: "三教601", teacher: "程定平", cls: "技术经济学-0008", comp: "工商2404", num: 46, note: "" },
+    { name: "商务礼仪A", day: 3, start: 5, end: 6, w0: 1, w1: 16, parity: "all", room: "三教305", teacher: "袁复君", cls: "商务礼仪A-0005", comp: "工商2404", num: 46, note: "" },
+    { name: "ERP原理与应用", day: 4, start: 5, end: 8, w0: 9, w1: 16, parity: "all", room: "三教401", teacher: "宋子慧", cls: "ERP原理与应用-0008", comp: "工商2404", num: 46, note: "" },
+    { name: "形势与政策（五）", day: 1, start: 7, end: 8, w0: 9, w1: 12, parity: "all", room: "二教4阶", teacher: "胡印玄", cls: "形势与政策（五）-0095", comp: "大数据2404、工商2404", num: 71, note: "" },
+    { name: "战略管理", day: 3, start: 7, end: 8, w0: 9, w1: 16, parity: "all", room: "三教609", teacher: "吴英", cls: "战略管理-0004", comp: "工商2404", num: 46, note: "" }
+  ];
+
+  var COLORS = {
+    "服务管理": { bg: "#d7f3ef", fg: "#0b6b5f", line: "#0d9488" },
+    "技术经济学": { bg: "#dbeafe", fg: "#1e40af", line: "#2563eb" },
+    "消费者行为学": { bg: "#ffedd5", fg: "#9a3412", line: "#ea580c" },
+    "数字化客户关系管理": { bg: "#dcfce7", fg: "#166534", line: "#16a34a" },
+    "管理统计学": { bg: "#e0e7ff", fg: "#3730a3", line: "#4f46e5" },
+    "战略管理": { bg: "#ffe4e6", fg: "#9f1239", line: "#e11d48" },
+    "商务礼仪A": { bg: "#fef3c7", fg: "#92400e", line: "#d97706" },
+    "ERP原理与应用": { bg: "#ede9fe", fg: "#5b21b6", line: "#7c3aed" },
+    "形势与政策（五）": { bg: "#cffafe", fg: "#155e75", line: "#0891b2" }
+  };
+  var DEFAULT_COLOR = { bg: "#eef2f6", fg: "#334155", line: "#64748b" };
+
+  function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+  function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+  function weekMonday(week) { return addDays(WEEK1_MONDAY, (week - 1) * 7); }
+  function fmtMD(d) { return (d.getMonth() + 1) + "." + d.getDate(); }
+  function todayMid() { var t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); }
+
+  function currentWeek() {
+    var diff = Math.round((todayMid() - WEEK1_MONDAY) / MS_DAY);
+    var w = Math.floor(diff / 7) + 1;
+    return Math.max(1, Math.min(18, w));
+  }
+
+  function courseVisible(c, week, mode) {
+    if (week < c.w0 || week > c.w1) return false;
+    var odd = week % 2 === 1;
+    if (mode === "auto") {
+      if (c.parity === "even" && odd) return false;
+      if (c.parity === "odd" && !odd) return false;
+    } else if (mode === "odd") {
+      if (c.parity === "even") return false;
+    } else if (mode === "even") {
+      if (c.parity === "odd") return false;
+    }
+    return true;
+  }
+
+  var state = { week: currentWeek(), mode: "auto", pendingWeek: currentWeek() };
+
+  var el = {
+    termChip: document.getElementById("termChip"),
+    weekNum: document.getElementById("weekNum"),
+    weekRange: document.getElementById("weekRange"),
+    parityText: document.getElementById("parityText"),
+    courseCount: document.getElementById("courseCount"),
+    schedule: document.getElementById("schedule"),
+    paritySeg: document.getElementById("paritySeg"),
+    prevWeek: document.getElementById("prevWeek"),
+    nextWeek: document.getElementById("nextWeek"),
+    todayBtn: document.getElementById("todayBtn"),
+    weekMask: document.getElementById("weekMask"),
+    weekSheet: document.getElementById("weekSheet"),
+    weekGrid: document.getElementById("weekGrid"),
+    weekClose: document.getElementById("weekClose"),
+    weekCancel: document.getElementById("weekCancel"),
+    weekConfirm: document.getElementById("weekConfirm"),
+    detailMask: document.getElementById("detailMask"),
+    detailSheet: document.getElementById("detailSheet"),
+    detailBody: document.getElementById("detailBody"),
+    detailClose: document.getElementById("detailClose")
+  };
+
+  function parityLabel(week, mode) {
+    var odd = week % 2 === 1;
+    if (mode === "odd") return "单周";
+    if (mode === "even") return "双周";
+    return odd ? "单周" : "双周";
+  }
+
+  function render() {
+    var week = state.week;
+    var mode = state.mode;
+    var mon = weekMonday(week);
+    var sun = addDays(mon, 6);
+    var today = todayMid();
+
+    el.weekNum.textContent = week;
+    el.termChip.innerHTML = TERM + " · 第" + week + "周 <span class=\"arr\">▾</span>";
+    el.weekRange.textContent = fmtMD(mon) + " - " + fmtMD(sun);
+    el.parityText.textContent = parityLabel(week, mode) + (mode === "auto" ? "（自动）" : "");
+
+    Array.prototype.forEach.call(el.paritySeg.children, function (b) {
+      b.classList.toggle("active", b.getAttribute("data-mode") === mode);
+    });
+
+    var grid = el.schedule;
+    grid.style.gridTemplateRows = "44px repeat(" + PERIODS.length + ", 58px)";
+    grid.innerHTML = "";
+
+    var corner = document.createElement("div");
+    corner.className = "cell corner";
+    corner.textContent = "节次";
+    grid.appendChild(corner);
+
+    for (var d = 0; d < 7; d++) {
+      var dayDate = addDays(mon, d);
+      var h = document.createElement("div");
+      h.className = "cell head" + (sameDay(dayDate, today) ? " today" : "");
+      var dn = document.createElement("span");
+      dn.className = "dname";
+      dn.textContent = DAYS[d];
+      var du = document.createElement("span");
+      du.className = "dnum";
+      du.textContent = dayDate.getDate();
+      h.appendChild(dn);
+      h.appendChild(du);
+      grid.appendChild(h);
+    }
+
+    PERIODS.forEach(function (p) {
+      var cell = document.createElement("div");
+      cell.className = "period";
+      cell.style.gridColumn = "1";
+      cell.style.gridRowStart = (p.no + 1).toString();
+      cell.style.gridRowEnd = "span 1";
+      var pno = document.createElement("span");
+      pno.className = "pno";
+      pno.textContent = p.no < 10 ? "0" + p.no : String(p.no);
+      var s = document.createElement("span");
+      s.className = "pt";
+      s.textContent = p.s;
+      var e = document.createElement("span");
+      e.className = "pt";
+      e.textContent = p.e;
+      cell.appendChild(pno);
+      cell.appendChild(s);
+      cell.appendChild(e);
+      grid.appendChild(cell);
+    });
+
+    var visible = COURSES.filter(function (c) { return courseVisible(c, week, mode); });
+    el.courseCount.textContent = visible.length;
+
+    visible.forEach(function (c) {
+      var col = COLORS[c.name] || DEFAULT_COLOR;
+      var b = document.createElement("button");
+      b.className = "course";
+      b.type = "button";
+      b.style.gridColumn = (c.day + 1).toString();
+      b.style.gridRowStart = (c.start + 1).toString();
+      b.style.gridRowEnd = "span " + (c.end - c.start + 1);
+      b.style.background = col.bg;
+      b.style.color = col.fg;
+      b.style.borderLeftColor = col.line;
+      b.setAttribute("aria-label", c.name + "，" + c.room);
+
+      if (c.parity !== "all") {
+        var tag = document.createElement("span");
+        tag.className = "c-tag";
+        tag.textContent = c.parity === "even" ? "双周" : "单周";
+        b.appendChild(tag);
+      }
+      var name = document.createElement("span");
+      name.className = "c-name";
+      name.textContent = c.name;
+      var room = document.createElement("span");
+      room.className = "c-meta";
+      room.textContent = c.room;
+      var teacher = document.createElement("span");
+      teacher.className = "c-meta";
+      teacher.textContent = c.teacher;
+      b.appendChild(name);
+      b.appendChild(room);
+      b.appendChild(teacher);
+
+      b.addEventListener("click", function () { openDetail(c); });
+      grid.appendChild(b);
+    });
+  }
+
+  function openWeekSheet() {
+    state.pendingWeek = state.week;
+    el.weekGrid.innerHTML = "";
+    var now = currentWeek();
+    for (var i = 1; i <= 18; i++) {
+      (function (n) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = n;
+        b.setAttribute("data-w", n);
+        if (n === now) b.classList.add("now");
+        if (n === state.pendingWeek) b.classList.add("sel");
+        b.addEventListener("click", function () {
+          state.pendingWeek = n;
+          Array.prototype.forEach.call(el.weekGrid.children, function (x) {
+            x.classList.toggle("sel", x.getAttribute("data-w") * 1 === state.pendingWeek);
+          });
+        });
+        el.weekGrid.appendChild(b);
+      })(i);
+    }
+    el.weekMask.classList.add("show");
+    el.weekSheet.classList.add("show");
+  }
+
+  function closeWeekSheet() {
+    el.weekMask.classList.remove("show");
+    el.weekSheet.classList.remove("show");
+  }
+
+  function openDetail(c) {
+    var rows = [
+      ["课程", c.name],
+      ["节次", "第" + c.start + "-" + c.end + "节"],
+      ["周次", "第" + c.w0 + "-" + c.w1 + "周" + (c.parity === "even" ? "（双周）" : c.parity === "odd" ? "（单周）" : "")],
+      ["校区", "校本部"],
+      ["场地", c.room],
+      ["教师", c.teacher],
+      ["教学班", c.cls],
+      ["组成", c.comp],
+      ["人数", c.num + "人"],
+      ["备注", c.note || "无"]
+    ];
+    var html = '<div class="detail-title">' + c.name + '</div>';
+    html += '<div class="detail-sub">' + TERM + ' · 第' + state.week + '周</div>';
+    rows.forEach(function (r) {
+      html += '<div class="kv"><div class="k">' + r[0] + '</div><div class="v">' + r[1] + '</div></div>';
+    });
+    html += '<button class="detail-close" id="detailOk">知道了</button>';
+    el.detailBody.innerHTML = html;
+    document.getElementById("detailOk").addEventListener("click", closeDetail);
+    el.detailMask.classList.add("show");
+    el.detailSheet.classList.add("show");
+  }
+
+  function closeDetail() {
+    el.detailMask.classList.remove("show");
+    el.detailSheet.classList.remove("show");
+  }
+
+  function setWeek(w) {
+    state.week = Math.max(1, Math.min(18, w));
+    render();
+  }
+
+  el.prevWeek.addEventListener("click", function () { setWeek(state.week - 1); });
+  el.nextWeek.addEventListener("click", function () { setWeek(state.week + 1); });
+  el.todayBtn.addEventListener("click", function () { state.mode = "auto"; setWeek(currentWeek()); });
+  el.termChip.addEventListener("click", openWeekSheet);
+
+  Array.prototype.forEach.call(el.paritySeg.children, function (b) {
+    b.addEventListener("click", function () {
+      state.mode = b.getAttribute("data-mode");
+      render();
+    });
+  });
+
+  el.weekClose.addEventListener("click", closeWeekSheet);
+  el.weekCancel.addEventListener("click", closeWeekSheet);
+  el.weekConfirm.addEventListener("click", function () {
+    state.week = state.pendingWeek;
+    closeWeekSheet();
+    render();
+  });
+  el.weekMask.addEventListener("click", closeWeekSheet);
+
+  el.detailClose.addEventListener("click", closeDetail);
+  el.detailMask.addEventListener("click", closeDetail);
+
+  render();
+})();
+</script>
+</body>
+</html>
